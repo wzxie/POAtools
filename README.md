@@ -11,3 +11,4 @@
 - **Cross-platform**: Works on Linux, macOS, and Windows Subsystem for Linux (WSL)
 - **Containerized**: Ready-to-use Docker images available
 - **User-friendly**: Simple command-line interface with comprehensive help
+[石麦流程图5.0.drawio.pdf](https://github.com/user-attachments/files/24930492/5.0.drawio.pdf)
