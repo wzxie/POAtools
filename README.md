@@ -18,7 +18,7 @@
 ### One-line Installation (Recommended)
 ```bash
 # Install POAtools in one command
-curl -sSL https://raw.githubusercontent.com/yourusername/poatools/main/scripts/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/wzxie/POAtools/main/scripts/install.sh | bash
 ```
 
 ### Standard Installation
