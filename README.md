@@ -1,6 +1,6 @@
 ## Overview
 
-**POAtools** is a comprehensive bioinformatics toolkit for parental origin analysis and gene classification scoring in genetic studies. It provides a complete four-step pipeline for analyzing SNP data and generating publication-quality visualizations with R-style aesthetics implemented in Python.
+**Poatools** is a comprehensive bioinformatics toolkit for parental origin analysis and gene classification scoring in genetic research. It provides a complete four step process for analyzing SNP data and generating publishable level visualization results by python.
 
 ## ✨ Features
 
@@ -194,7 +194,7 @@ Generates publication-quality visualizations:
 ### Quick Start with Docker
 ```bash
 # Run POAtools in Docker container
-docker run -v $(pwd):/data ghcr.io/yourusername/poatools:latest \
+docker run -v $(pwd):/data ghcr.io/wzxie/POAtools:latest \
   -i /data/input.vcf.gz -c parent1,parent2 -q /data/samples.txt -1 -2 -3 -4
 
 # Interactive Docker shell
