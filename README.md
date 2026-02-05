@@ -29,25 +29,6 @@ cd poatools
 ./scripts/install.sh
 ```
 
-### Alternative Installation Methods
-
-#### Docker Installation
-```bash
-# Pull and run Docker image
-docker run -v $(pwd):/data ghcr.io/yourusername/poatools:latest --help
-
-# Or build locally
-docker build -t poatools .
-docker run -v $(pwd):/data poatools -h
-```
-
-#### Conda Installation
-```bash
-# Create conda environment
-conda env create -f scripts/conda/environment.yml
-conda activate poatools
-```
-
 #### Virtual Environment Installation
 ```bash
 # Create isolated Python environment
