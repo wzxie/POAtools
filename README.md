@@ -236,7 +236,7 @@ If you use POAtools in your research, please cite:
   title = {POAtools: Parental Origin Analysis Toolkit},
   year = {2024},
   publisher = {GitHub},
-  url = {https://github.com/yourusername/poatools},
+  url = {https://github.com/WZXIE/poatools},
   version = {4.0.0},
   doi = {10.5281/zenodo.XXXXXXX}
 }
