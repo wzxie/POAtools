@@ -85,7 +85,7 @@ poatools -i stats_directory/ -genome reference.gff -4 -batch -O batch_output/
 ### Common Options
 ```bash
 # Show help and all options
-poatools --help
+poatools --h
 
 # Show version
 poatools --version
