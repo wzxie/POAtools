@@ -35,7 +35,7 @@ The `install.sh` script will:
 After a successful installation, you will see:
 ```
 ✓ POAtools command is now available!
-You can use: POAtools --help
+You can use: POAtools -h
 ```
 
 ### (3) Activate POAtools in your current terminal
@@ -62,7 +62,7 @@ Alternatively, use the provided alias script:
 ### (4) Verify the installation
 
 ```bash
-POAtools --help
+POAtools -h
 python3 check_python_deps.py
 ./test_installation.sh
 ```
