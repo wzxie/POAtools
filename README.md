@@ -16,7 +16,6 @@ POAtools is a comprehensive bioinformatics toolkit for **parental origin analysi
 
 ```bash
 git clone https://github.com/wzxie/POAtools.git
-cd poatools
 ```
 
 ### (2) Run the automatic installation script
