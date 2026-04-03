@@ -67,29 +67,6 @@ python3 check_python_deps.py
 ./test_installation.sh
 ```
 
-### (5) Troubleshooting Python dependencies
-
-If Python packages fail to install (e.g., due to missing C++ compiler), run the dedicated fix script:
-
-```bash
-./fix_python_deps.sh
-```
-
-Or install manually:
-
-```bash
-pip3 install --user pandas==1.5.3 seaborn==0.12.2 numpy matplotlib
-```
-
-### (6) System‑wide installation (optional)
-
-If you want POAtools to be available for all users, you can manually copy the main script to a system bin directory:
-
-```bash
-sudo cp POAtools /usr/local/bin/
-sudo chmod +x /usr/local/bin/POAtools
-```
-
 ## Example
 
 ### 1. Download example data
