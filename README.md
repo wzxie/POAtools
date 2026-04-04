@@ -216,4 +216,4 @@ chr1    .       gene    1000    2000    .    +    .    ID=Gene1
 We hope this toolkit will be helpful for researchers working on population genetics, plant breeding, and evolutionary studies. Please use the GitHub issue tracker to report bugs or request features, or email us with any suggestions.
 
 - Xie wenzhao: wzxie@hebtu.edu.cn
-- Yang yufeng: y751878693@icloud.com
+- Yang yufeng: 751878693@qq.com
