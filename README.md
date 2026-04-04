@@ -88,42 +88,45 @@ POAtools -i demo.vcf.gz -c ZR48,ZR166 -q samples.txt -1 -2 -3 -4 -genome ref.gff
 ### Quick start
 
 ```bash
-Usage: POAtools -i <input.vcf> -c <parent1,parent2> -q <sample_list> [options]
-```
+Usage: POAtools [options]
 
-**Input/Output options:**
-```
--i        input VCF file (can be .vcf or .vcf.gz)
--c        comma‑separated parent names (e.g., parent1,parent2)
--q        sample list file (one sample per line)
--genome   reference genome annotation (GFF3) for Step 4
--O        output directory (default: ./output)
-```
+Required options:
+    -i, --input VCF         Input VCF file
+    -c, --parents SAMPLES   Set parent samples, comma separated (e.g.: ZR48,ZR166)
+    -q, --samples-file FILE Set sample list file
 
-**Step selection (run one or more):**
-```
--1        run Step 1: SNP density analysis
--2        run Step 2: gene classification scoring
--3        run Step 3: gene statistics calculation
--4        run Step 4: R‑style visualization
-```
+Other options:
+    -p, --prefix PREFIX     Set output file prefix (default: "output")
+    -o, --output DIR        Output directory (default: current directory)
+    -1, --step1             Run step 1 (SNP density analysis)
+    -2, --step2             Run step 2 (Gene classification scoring)
+    -3, --step3             Run step 3 (Gene statistics calculation)
+    -4, --step4             Run step 4 (Gene classification visualization)
+    -genome genome.gff            Genome file for visualization (required for step 4 and run all steps)
+    -High VALUE             High confidence threshold for step 4 default=0.8 (optional)
+    -Medium VALUE           Medium confidence threshold for step 4 default=0.5 (optional)
+    -Min VALUE              Minimum confidence threshold for step 4 default=0.4 (optional)
+    -v, --visual T/F        Enable/disable visualization in step 4 (default: T)
+    -h, --help              Display this help message
 
-**Filter and polish options:**
-```
--High     high confidence threshold (default: 0.8)
--Medium   medium confidence threshold (default: 0.5)
--Min      minimum ratio threshold (default: 0.4)
-```
+Examples:
+    POAtools -i demo.vcf.gz -c ZR48,ZR166 -q samples.txt -1
+    POAtools -i demo.vcf.gz -c ZR48,ZR166 -q samples.txt -p my_analysis -o ./results -1 -2 -3
+    POAtools -i step1_output.vcf.gz -2
+    POAtools -i output_gene_classification_scores.tsv -o ./output -3
+    POAtools -i gene_stats_dir -genome genome.gff -4
+    POAtools -i gene_stats_sample1.txt -genome genome.gff -4 -High 0.9 -Medium 0.6 -Min 0.3 -v F
+    POAtools -i demo.vcf.gz -c ZR48,ZR166 -q samples.txt -genome genome.gff  # Run all steps by default
 
-**General options:**
-```
--t        number of threads (default: 1)
--v, --version  show version
--h, --help     show help information
-```
+Description:
+    Step 1: Process VCF file based on parent samples and sample list, generate classification results
+    Step 2: Extract gene information and scores from classification results
+    Step 3: Calculate gene statistics including A, B, AB, NAB, AXB scores and nonzero site counts
+    Step 4: Generate comprehensive gene classification and visualization plots
 
-See more information at [https://github.com/yourusername/poatools](https://github.com/yourusername/poatools)
+Note: If no steps are specified (-1, -2, -3, -4), all steps will be run by default.
 
+```
 ## Proceed in a stepwise fashion
 
 Users may want to run each step separately, e.g., for debugging or integrating with other tools.
