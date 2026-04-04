@@ -200,11 +200,11 @@ chr1    .       gene    1000    2000    .    +    .    ID=Gene1
 
 ## Visual outputs
 
-- **Chromosome facet plot** – distribution of gene classes across chromosomes.
-- **Physical heatmap** – classification of genes plotted by genomic coordinates.
-- **Adjacent gene plot** – continuous segments of merged same‑class genes and intergenic regions.
-- **Score ratio line plot** – ratio trends for each class along each chromosome.
-- **Confidence pie charts** – proportion of high/medium/low confidence calls.
+- **Chromosome classification proportion chart** - distribution of gene categories on chromosomes.
+- **Gene classification chart** – a map of gene classification plotted according to genomic coordinates.
+- **Segment classification diagram** –  a continuous segment composed of merged homologous genes and intergenic regions.
+- **Score ratio line chart** – ratio trends for each class along each chromosome.
+- **Confidence pie chart** – proportion of high/medium/low confidence calls.
 
 ## Citing POAtools
 
