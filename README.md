@@ -51,7 +51,7 @@ To be announced
 ### 2. Run POAtools
 
 ```bash
-POAtools -i demo.vcf.gz -c ZR48,ZR166 -q samples.txt -1 -2 -3 -4 -genome ref.gff -O output/ &> poatools.log
+POAtools -i demo.vcf.gz -c ZR48,ZR166 -q samples.txt -1 -2 -3 -4 -genome ref.gff -O output
 ```
 
 ## Usage
