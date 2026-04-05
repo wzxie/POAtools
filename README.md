@@ -40,43 +40,12 @@ After a successful installation, you will see:
 You can use: POAtools -h
 ```
 
-### (3) Activate POAtools in your current terminal
-
-If the `POAtools` command is not immediately recognized, run:
-
-```bash
-source setup_environment.sh
-```
-
-To make POAtools permanently available in every new terminal, add the following line to your `~/.bashrc` or `~/.zshrc`:
-
-```bash
-export PATH="$HOME/.local/bin:$PATH"
-alias POAtools='/path/to/poatools/POAtools'
-```
-
-Alternatively, use the provided alias script:
-
-```bash
-./setup_alias.sh
-```
-
-### (4) Verify the installation
-
-```bash
-POAtools -h
-python3 check_python_deps.py
-./test_installation.sh
-```
-
 ## Example
 
 ### 1. Download example data
 
 ```bash
-wget https://zenodo.org/record/xxxxxxx/files/demo.vcf.gz
-wget https://zenodo.org/record/xxxxxxx/files/samples.txt
-wget https://zenodo.org/record/xxxxxxx/files/ref.gff
+To be announced
 ```
 
 ### 2. Run POAtools
