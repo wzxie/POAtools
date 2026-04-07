@@ -45,7 +45,8 @@ You can use: POAtools -h
 ### 1. Download example data
 
 ```bash
-To be announced
+https://github.com/wzxie/POAtools/blob/main/demo.vcf.gz
+https://github.com/wzxie/POAtools/blob/main/genome.gff
 ```
 
 ### 2. Run POAtools
