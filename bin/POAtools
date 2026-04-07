@@ -1,0 +1,522 @@
+#!/bin/bash
+
+# POAtools - SNP Density Analysis and Gene Classification Scoring Tool
+# Version: 3.0.0
+
+# Get script directory
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Initialize parameters
+PARENT_SAMPLES=""
+SAMPLE_FILE=""
+OUTPUT_PREFIX="output"  # Default prefix
+OUTPUT_DIR="output"
+INPUT_VCF=""
+RUN_STEP1=false
+RUN_STEP2=false
+RUN_STEP3=false
+RUN_STEP4=false
+GENOME_FILE=""
+HIGH_THRESHOLD=""
+MEDIUM_THRESHOLD=""
+MIN_THRESHOLD=""
+VISUALIZATION=true  # Default to true for visualization
+
+# Display help information
+show_help() {
+    cat << 'EOF'
+POAtools - Parental Origin Analysis and Gene Classification Scoring Tool
+
+Usage: POAtools [options]
+
+Required options:
+    -i, --input VCF         Input VCF file
+    -c, --parents SAMPLES   Set parent samples, comma separated (e.g.: ZR48,ZR166)
+    -q, --samples-file FILE Set sample list file
+
+Other options:
+    -p, --prefix PREFIX     Set output file prefix (default: "output")
+    -o, --output DIR        Output directory (default: current directory)
+    -1, --step1             Run step 1 (SNP density analysis)
+    -2, --step2             Run step 2 (Gene classification scoring)
+    -3, --step3             Run step 3 (Gene statistics calculation)
+    -4, --step4             Run step 4 (Gene classification visualization)
+    -genome genome.gff            Genome file for visualization (required for step 4 and run all steps)
+    -High VALUE             High confidence threshold for step 4 default=0.8 (optional)
+    -Medium VALUE           Medium confidence threshold for step 4 default=0.5 (optional)
+    -Min VALUE              Minimum confidence threshold for step 4 default=0.4 (optional)
+    -v, --visual T/F        Enable/disable visualization in step 4 (default: T)
+    -h, --help              Display this help message
+
+Examples:
+    POAtools -i demo.vcf.gz -c ZR48,ZR166 -q samples.txt -1
+    POAtools -i demo.vcf.gz -c ZR48,ZR166 -q samples.txt -p my_analysis -o ./results -1 -2 -3
+    POAtools -i step1_output.vcf.gz -2
+    POAtools -i output_gene_classification_scores.tsv -o ./output -3
+    POAtools -i gene_stats_dir -genome genome.gff -4
+    POAtools -i gene_stats_sample1.txt -genome genome.gff -4 -High 0.9 -Medium 0.6 -Min 0.3 -v F
+    POAtools -i demo.vcf.gz -c ZR48,ZR166 -q samples.txt -genome genome.gff  # Run all steps by default
+
+Description:
+    Step 1: Process VCF file based on parent samples and sample list, generate classification results
+    Step 2: Extract gene information and scores from classification results
+    Step 3: Calculate gene statistics including A, B, AB, NAB, AXB scores and nonzero site counts
+    Step 4: Generate comprehensive gene classification and visualization plots
+
+Note: If no steps are specified (-1, -2, -3, -4), all steps will be run by default.
+EOF
+}
+
+# Check if no steps are specified
+check_no_steps_specified() {
+    if [[ $# -gt 0 ]]; then
+        # Check if any step flags are present
+        for arg in "$@"; do
+            if [[ "$arg" == "-1" || "$arg" == "--step1" || \
+                  "$arg" == "-2" || "$arg" == "--step2" || \
+                  "$arg" == "-3" || "$arg" == "--step3" || \
+                  "$arg" == "-4" || "$arg" == "--step4" ]]; then
+                return 1
+            fi
+        done
+    fi
+    return 0
+}
+
+# Validate required parameters
+validate_required_params() {
+    local missing_params=()
+    
+    # If no steps specified and we're not in default mode, error
+    if [[ "$RUN_STEP1" == false && "$RUN_STEP2" == false && "$RUN_STEP3" == false && "$RUN_STEP4" == false ]]; then
+        missing_params+=("At least one step (-1/--step1, -2/--step2, -3/--step3 or -4/--step4)")
+    fi
+    
+    # Check requirements for each step
+    if [[ "$RUN_STEP1" == true ]]; then
+        if [[ -z "$INPUT_VCF" ]]; then
+            missing_params+=("Input VCF file (-i/--input)")
+        fi
+        if [[ -z "$PARENT_SAMPLES" ]]; then
+            missing_params+=("Parent samples (-c/--parents)")
+        fi
+        if [[ -z "$SAMPLE_FILE" ]]; then
+            missing_params+=("Sample list file (-q/--samples-file)")
+        fi
+    fi
+    
+    if [[ "$RUN_STEP2" == true && "$RUN_STEP1" == false ]]; then
+        if [[ -z "$INPUT_VCF" ]]; then
+            missing_params+=("Input VCF file (-i/--input) for step 2")
+        fi
+    fi
+    
+    if [[ "$RUN_STEP3" == true && "$RUN_STEP1" == false && "$RUN_STEP2" == false ]]; then
+        if [[ -z "$INPUT_VCF" ]]; then
+            missing_params+=("Input file (-i/--input) for step 3")
+        fi
+    fi
+    
+    if [[ "$RUN_STEP4" == true ]]; then
+        if [[ -z "$GENOME_FILE" ]]; then
+            missing_params+=("Genome file (-genome) for step 4")
+        fi
+        if [[ -z "$INPUT_VCF" ]]; then
+            missing_params+=("Input path (-i/--input) for step 4")
+        fi
+    fi
+    
+    if [[ ${#missing_params[@]} -gt 0 ]]; then
+        echo "Error: Missing required parameters:"
+        for param in "${missing_params[@]}"; do
+            echo "  - $param"
+        done
+        echo ""
+        echo "Use 'POAtools -h' to view full help information"
+        exit 1
+    fi
+}
+
+# Parameter parsing
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        -h|--help)
+            show_help
+            exit 0
+            ;;
+        -i|--input)
+            INPUT_VCF="$2"
+            shift 2
+            ;;
+        -c|--parents)
+            PARENT_SAMPLES="$2"
+            shift 2
+            ;;
+        -C|--parents)  # Keep uppercase for backward compatibility
+            PARENT_SAMPLES="$2"
+            shift 2
+            ;;
+        -q|--samples-file)
+            SAMPLE_FILE="$2"
+            shift 2
+            ;;
+        -Q|--samples-file)  # Keep uppercase for backward compatibility
+            SAMPLE_FILE="$2"
+            shift 2
+            ;;
+        -p|--prefix)
+            OUTPUT_PREFIX="$2"
+            shift 2
+            ;;
+        -P|--prefix)  # Keep uppercase for backward compatibility
+            OUTPUT_PREFIX="$2"
+            shift 2
+            ;;
+        -o|--output)
+            OUTPUT_DIR="$2"
+            shift 2
+            ;;
+        -O|--output)  # Keep uppercase for backward compatibility
+            OUTPUT_DIR="$2"
+            shift 2
+            ;;
+        -1|--step1)
+            RUN_STEP1=true
+            shift
+            ;;
+        -2|--step2)
+            RUN_STEP2=true
+            shift
+            ;;
+        -3|--step3)
+            RUN_STEP3=true
+            shift
+            ;;
+        -4|--step4)
+            RUN_STEP4=true
+            shift
+            ;;
+        -genome)
+            GENOME_FILE="$2"
+            shift 2
+            ;;
+        -High)
+            HIGH_THRESHOLD="$2"
+            shift 2
+            ;;
+        -Medium)
+            MEDIUM_THRESHOLD="$2"
+            shift 2
+            ;;
+        -Min)
+            MIN_THRESHOLD="$2"
+            shift 2
+            ;;
+        -v|--visual)
+            VISUALIZATION_ARG="$2"
+            shift 2
+            ;;
+        *)
+            echo "Error: Unknown option $1"
+            echo "Use 'POAtools -h' for help information"
+            exit 1
+            ;;
+    esac
+done
+
+# Check if no steps are specified
+if [[ "$RUN_STEP1" == false && "$RUN_STEP2" == false && "$RUN_STEP3" == false && "$RUN_STEP4" == false ]]; then
+    # No steps were explicitly specified, run all steps by default
+    RUN_STEP1=true
+    RUN_STEP2=true
+    RUN_STEP3=true
+    RUN_STEP4=true
+    echo "Note: No steps specified, running all steps by default"
+fi
+
+# Process visualization parameter
+if [[ -n "$VISUALIZATION_ARG" ]]; then
+    if [[ "$VISUALIZATION_ARG" == "T" || "$VISUALIZATION_ARG" == "t" || "$VISUALIZATION_ARG" == "true" || "$VISUALIZATION_ARG" == "True" ]]; then
+        VISUALIZATION=true
+    elif [[ "$VISUALIZATION_ARG" == "F" || "$VISUALIZATION_ARG" == "f" || "$VISUALIZATION_ARG" == "false" || "$VISUALIZATION_ARG" == "False" ]]; then
+        VISUALIZATION=false
+    else
+        echo "Error: Invalid value for -v parameter. Use T or F."
+        exit 1
+    fi
+fi
+
+# Validate required parameters
+validate_required_params
+
+# Create output directory
+mkdir -p "$OUTPUT_DIR"
+
+# Set output file paths
+STEP1_OUTPUT="$OUTPUT_DIR/${OUTPUT_PREFIX}.vcf.gz"
+STEP2_OUTPUT="$OUTPUT_DIR/${OUTPUT_PREFIX}_gene_classification_scores.tsv"
+STEP3_OUTPUT="$OUTPUT_DIR/stats"
+STEP4_OUTPUT="$OUTPUT_DIR/r_style_visualization"
+
+# Validate input files
+if [[ "$RUN_STEP1" == true ]]; then
+    if [[ ! -f "$INPUT_VCF" ]]; then
+        echo "Error: Input VCF file does not exist: $INPUT_VCF"
+        exit 1
+    fi
+    
+    if [[ ! -f "$SAMPLE_FILE" ]]; then
+        echo "Error: Sample list file does not exist: $SAMPLE_FILE"
+        exit 1
+    fi
+fi
+
+if [[ "$RUN_STEP2" == true && "$RUN_STEP1" == false && "$RUN_STEP3" == false && "$RUN_STEP4" == false ]]; then
+    # For step 2 only, the input should be step1 output
+    if [[ ! -f "$INPUT_VCF" ]]; then
+        echo "Error: Step 1 output file does not exist: $INPUT_VCF"
+        echo "Please run Step 1 first or provide the correct input file"
+        exit 1
+    fi
+    # Use the provided input as step1 output for step 2
+    STEP1_OUTPUT="$INPUT_VCF"
+fi
+
+if [[ "$RUN_STEP3" == true && "$RUN_STEP1" == false && "$RUN_STEP2" == false && "$RUN_STEP4" == false ]]; then
+    # For step 3 only, the input should be step2 output
+    if [[ ! -f "$INPUT_VCF" ]]; then
+        echo "Error: Step 2 output file does not exist: $INPUT_VCF"
+        echo "Please run Step 2 first or provide the correct input file"
+        exit 1
+    fi
+    # Use the provided input for step 3
+    STEP2_OUTPUT="$INPUT_VCF"
+fi
+
+if [[ "$RUN_STEP4" == true && "$RUN_STEP1" == false && "$RUN_STEP2" == false && "$RUN_STEP3" == false ]]; then
+    # For step 4 only, the input can be a file or directory
+    if [[ ! -e "$INPUT_VCF" ]]; then
+        echo "Error: Step 4 input path does not exist: $INPUT_VCF"
+        echo "Please provide a valid gene_stats_*.txt file or directory containing such files"
+        exit 1
+    fi
+    # Use the provided input for step 4
+    STEP3_OUTPUT="$INPUT_VCF"
+fi
+
+# Parse parent samples (only needed for step 1)
+if [[ "$RUN_STEP1" == true ]]; then
+    IFS=',' read -ra PARENT_ARRAY <<< "$PARENT_SAMPLES"
+    if [[ ${#PARENT_ARRAY[@]} -ne 2 ]]; then
+        echo "Error: Must specify exactly two parent samples, comma separated"
+        exit 1
+    fi
+
+    PARENT1="${PARENT_ARRAY[0]}"
+    PARENT2="${PARENT_ARRAY[1]}"
+fi
+
+echo "=========================================="
+echo "POAtools - Starting Analysis"
+echo "=========================================="
+echo "Input file: $INPUT_VCF"
+if [[ "$RUN_STEP1" == true ]]; then
+    echo "Parent samples: $PARENT1, $PARENT2"
+    echo "Sample file: $SAMPLE_FILE"
+    echo "Output prefix: $OUTPUT_PREFIX"
+fi
+if [[ "$RUN_STEP4" == true ]]; then
+    echo "Genome file: $GENOME_FILE"
+    [[ -n "$HIGH_THRESHOLD" ]] && echo "High threshold: $HIGH_THRESHOLD"
+    [[ -n "$MEDIUM_THRESHOLD" ]] && echo "Medium threshold: $MEDIUM_THRESHOLD"
+    [[ -n "$MIN_THRESHOLD" ]] && echo "Min threshold: $MIN_THRESHOLD"
+    echo "Visualization: $([[ "$VISUALIZATION" == true ]] && echo "Enabled" || echo "Disabled")"
+fi
+echo "Output directory: $OUTPUT_DIR"
+echo "Running steps: $([[ "$RUN_STEP1" == true ]] && echo "Step 1 ")$([[ "$RUN_STEP2" == true ]] && echo "Step 2 ")$([[ "$RUN_STEP3" == true ]] && echo "Step 3 ")$([[ "$RUN_STEP4" == true ]] && echo "Step 4 (R style)")"
+echo "=========================================="
+
+# Run step 1: SNP density analysis
+if [[ "$RUN_STEP1" == true ]]; then
+    echo "[$(date)] Starting step 1: SNP density analysis..."
+    
+    if ! "$SCRIPT_DIR/step1_snp_density.sh" "$INPUT_VCF" "$SAMPLE_FILE" "$PARENT1" "$PARENT2" "$STEP1_OUTPUT"; then
+        echo "Error: Step 1 execution failed"
+        exit 1
+    fi
+    
+    echo "[$(date)] Step 1 completed: Output file $STEP1_OUTPUT"
+fi
+
+# Run step 2: Gene classification scoring
+if [[ "$RUN_STEP2" == true ]]; then
+    echo "[$(date)] Starting step 2: Gene classification scoring..."
+    
+    if ! "$SCRIPT_DIR/step2_gene_scoring.sh" "$STEP1_OUTPUT" "$STEP2_OUTPUT"; then
+        echo "Error: Step 2 execution failed"
+        exit 1
+    fi
+    
+    echo "[$(date)] Step 2 completed: Output file $STEP2_OUTPUT"
+fi
+
+# Run step 3: Gene statistics calculation
+if [[ "$RUN_STEP3" == true ]]; then
+    echo "[$(date)] Starting step 3: Gene statistics calculation..."
+    
+    if ! "$SCRIPT_DIR/step3_gene_statistics.sh" "$STEP2_OUTPUT" "$STEP3_OUTPUT"; then
+        echo "Error: Step 3 execution failed"
+        exit 1
+    fi
+    
+    echo "[$(date)] Step 3 completed: Output files in $STEP3_OUTPUT"
+fi
+
+# Run step 4: Gene classification visualization (Python exact R replication)
+if [[ "$RUN_STEP4" == true ]]; then
+    echo "[$(date)] Starting step 4: Gene classification visualization (Python exact R replication)..."
+
+    # Check if input is a directory (multi-sample) or a file (single sample)
+    if [[ -d "$STEP3_OUTPUT" ]]; then
+        # Input is a directory: process all gene_stats_*.txt files
+        echo "  Processing all gene statistics files in directory: $STEP3_OUTPUT"
+        
+        # Count number of sample files
+        sample_files=$(find "$STEP3_OUTPUT" -name "gene_stats_*.txt" | wc -l)
+        if [[ $sample_files -eq 0 ]]; then
+            echo "Error: No gene_stats_*.txt files found in $STEP3_OUTPUT"
+            exit 1
+        fi
+        
+        echo "  Found $sample_files sample files to process"
+        
+        # Process each sample file
+        processed_count=0
+        for sample_file in "$STEP3_OUTPUT"/gene_stats_*.txt; do
+            if [[ -f "$sample_file" ]]; then
+                # Extract sample name from filename
+                filename=$(basename "$sample_file")
+                sample_name="${filename#gene_stats_}"
+                sample_name="${sample_name%.txt}"
+                
+                # Create output subdirectory for this sample
+                sample_output_dir="$STEP4_OUTPUT/$sample_name"
+                mkdir -p "$sample_output_dir"
+                
+                echo "  Processing sample: $sample_name"
+                
+                # Build confidence threshold arguments (only if explicitly set and different from default)
+                CONFIDENCE_ARGS=""
+                if [[ -n "$HIGH_THRESHOLD" && "$HIGH_THRESHOLD" != "0.8" ]]; then
+                    CONFIDENCE_ARGS="$CONFIDENCE_ARGS -High $HIGH_THRESHOLD"
+                fi
+                if [[ -n "$MEDIUM_THRESHOLD" && "$MEDIUM_THRESHOLD" != "0.5" ]]; then
+                    CONFIDENCE_ARGS="$CONFIDENCE_ARGS -Medium $MEDIUM_THRESHOLD"
+                fi
+                if [[ -n "$MIN_THRESHOLD" && "$MIN_THRESHOLD" != "0.4" ]]; then
+                    CONFIDENCE_ARGS="$CONFIDENCE_ARGS -Min $MIN_THRESHOLD"
+                fi
+                
+                # Build visualization argument
+                VISUAL_ARG=""
+                if [[ "$VISUALIZATION" == false ]]; then
+                    VISUAL_ARG=" -v F"
+                fi
+                
+                # Run the Python script for this sample
+                if python3 "$SCRIPT_DIR/step4_exact_r_replication.py" -i "$sample_file" -genome "$GENOME_FILE" -O "$sample_output_dir" $CONFIDENCE_ARGS$VISUAL_ARG; then
+                    ((processed_count++))
+                    echo "    ? Completed: $sample_name"
+                else
+                    echo "    ? Failed: $sample_name"
+                fi
+            fi
+        done
+        
+        echo "  Processed $processed_count of $sample_files samples successfully"
+        
+        # Create a summary file listing all processed samples
+        if [[ $processed_count -gt 0 ]]; then
+            echo "Sample Processing Summary" > "$STEP4_OUTPUT/processing_summary.txt"
+            echo "========================" >> "$STEP4_OUTPUT/processing_summary.txt"
+            echo "Total samples found: $sample_files" >> "$STEP4_OUTPUT/processing_summary.txt"
+            echo "Samples processed successfully: $processed_count" >> "$STEP4_OUTPUT/processing_summary.txt"
+            echo "" >> "$STEP4_OUTPUT/processing_summary.txt"
+            echo "Individual sample outputs:" >> "$STEP4_OUTPUT/processing_summary.txt"
+            for sample_dir in "$STEP4_OUTPUT"/*/; do
+                if [[ -d "$sample_dir" ]]; then
+                    sample=$(basename "$sample_dir")
+                    echo "  - $sample: $sample_dir" >> "$STEP4_OUTPUT/processing_summary.txt"
+                fi
+            done
+        fi
+        
+    elif [[ -f "$STEP3_OUTPUT" ]]; then
+        # Input is a single file: process as before
+        echo "  Processing single sample file: $STEP3_OUTPUT"
+        
+        # Build confidence threshold arguments...
+        CONFIDENCE_ARGS=""
+        # ... (保持原来的代码)
+        
+        # Build visualization argument
+        VISUAL_ARG=""
+        if [[ "$VISUALIZATION" == false ]]; then
+            VISUAL_ARG=" -v F"
+        fi
+        
+        # Run the Python script
+        if ! python3 "$SCRIPT_DIR/step4_exact_r_replication.py" -i "$STEP3_OUTPUT" -genome "$GENOME_FILE" -O "$STEP4_OUTPUT" $CONFIDENCE_ARGS$VISUAL_ARG; then
+            echo "Error: Step 4 execution failed"
+            exit 1
+        fi
+    else
+        echo "Error: Step 4 input path does not exist or is not accessible: $STEP3_OUTPUT"
+        exit 1
+    fi
+
+    echo "[$(date)] Step 4 completed: Output files in $STEP4_OUTPUT"
+fi
+
+echo "=========================================="
+echo "POAtools - Analysis Complete"
+echo "=========================================="
+echo "Generated files:"
+[[ "$RUN_STEP1" == true ]] && echo "  - $STEP1_OUTPUT"
+[[ "$RUN_STEP2" == true ]] && echo "  - $STEP2_OUTPUT"
+if [[ "$RUN_STEP3" == true ]]; then
+    echo "  - Gene statistics files in $STEP3_OUTPUT/"
+    for file in "$STEP3_OUTPUT"/gene_stats_*.txt; do
+        if [[ -f "$file" ]]; then
+            echo "    * $(basename "$file")"
+        fi
+    done
+fi
+if [[ "$RUN_STEP4" == true ]]; then
+    echo "  - R style visualization files in $STEP4_OUTPUT/"
+    if [[ -d "$STEP4_OUTPUT" ]]; then
+        # Check if it's single file mode (no subdirectories) or multi-file mode (with subdirectories)
+        if find "$STEP4_OUTPUT" -maxdepth 1 -type d | grep -q "$STEP4_OUTPUT"/[^.] ; then
+            # Multi-file mode: show subdirectories
+            for dir in "$STEP4_OUTPUT"/*/; do
+                if [[ -d "$dir" ]]; then
+                    echo "    - $(basename "$dir")/"
+                    # Show key files in each subdirectory
+                    for keyfile in "$dir"/*.pdf "$dir"/analysis_summary.txt; do
+                        if [[ -f "$keyfile" ]]; then
+                            echo "      * $(basename "$keyfile")"
+                        fi
+                    done
+                fi
+            done
+        else
+            # Single file mode: show files directly in output directory
+            for file in "$STEP4_OUTPUT"/*.pdf "$STEP4_OUTPUT"/analysis_summary.txt "$STEP4_OUTPUT"/*.csv; do
+                if [[ -f "$file" ]]; then
+                    echo "    - $(basename "$file")"
+                fi
+            done
+        fi
+    fi
+fi
+echo "=========================================="
